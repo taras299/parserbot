@@ -74,6 +74,14 @@ def callback_query(call):
                          "@Nutcraker❤️\n"
                          "@Dobruy_Na_Svyazi❤️")
 
+def send_parsing_options(message):
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    button4 = types.InlineKeyboardButton("Soul Parser", callback_data="button4_pressed")
+    button5 = types.InlineKeyboardButton("Void Parser  ", callback_data="button5_pressed")
+    button6 = types.InlineKeyboardButton("Любой", callback_data="button6_pressed")
+    markup.row(button4, button5, button6)
+    bot.send_message(message.chat.id, "🔍Выберите необходимый парсер:", reply_markup=markup)
+
 @bot.message_handler(func=lambda message: len(re.findall(r'http[s]?://[^\s]+', message.text)) >= 3 and len(
     re.findall(r'http[s]?://[^\s]+', message.text)) <= 6)
 def handle_links(message):
