@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 import sqlite3
 
-bot = telebot.TeleBot('YOUR_TOKEN')
+bot = telebot.TeleBot('6492078155:AAGD8wYe38GLMfslAcNxNFegvst3UA1FcbA')
 ADMIN_CHAT_IDS = ['6693635890', '6401268984']
 
 # Подключение к базе данных
