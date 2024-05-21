@@ -1,9 +1,25 @@
 import telebot
 from telebot import types
 import re
+import sqlite3
 
 bot = telebot.TeleBot('6492078155:AAGD8wYe38GLMfslAcNxNFegvst3UA1FcbA')
 ADMIN_CHAT_IDS = ['6693635890', '6401268984']
+
+conn = sqlite3.connect('user_data.db')
+cursor = conn.cursor()
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    username TEXT,
+    team TEXT,
+    profit INTEGER,
+    application_status TEXT
+)
+''')
+
+conn.commit()
 
 @bot.message_handler(commands=['start', 'menu'])
 def send_menu(message):
@@ -15,14 +31,33 @@ def send_menu(message):
     bot.send_message(message.chat.id, "Добро пожаловать в Lavoro Parser!\n"
                                       "🤖Меню бота:", reply_markup=markup)
 
-@bot.message_handler(commands=['parsing'])
-def send_parsing_options(message):
-    markup = types.InlineKeyboardMarkup(row_width=3)
-    button4 = types.InlineKeyboardButton("Soul Parser", callback_data="button4_pressed")
-    button5 = types.InlineKeyboardButton("Void Parser  ", callback_data="button5_pressed")
-    button6 = types.InlineKeyboardButton("Любой", callback_data="button6_pressed")
-    markup.row(button4, button5, button6)
-    bot.send_message(message.chat.id, "🔍Выберите необходимый парсер:", reply_markup=markup)
+# Ответы на вопросы для подачи заявки
+questions = {}
+@bot.message_handler(commands=['apply'])
+def start_application(message):
+    questions[message.from_user.id] = {'team': None, 'profit': None}
+    bot.send_message(message.chat.id, "Для подачи заявки ответьте на следующие вопросы:\n1. В каких тимах работали?\n2. Сумма ваших профитов?")
+
+@bot.message_handler(func=lambda message: message.from_user.id in questions and questions[message.from_user.id]['team'] is None)
+def handle_team(message):
+    questions[message.from_user.id]['team'] = message.text
+    bot.send_message(message.chat.id, "Отлично! Теперь введите сумму ваших профитов:")
+
+@bot.message_handler(func=lambda message: message.from_user.id in questions and questions[message.from_user.id]['team'] is not None)
+def handle_profit(message):
+    try:
+        profit = int(message.text)
+        questions[message.from_user.id]['profit'] = profit
+        save_application(message.from_user.id, questions[message.from_user.id]['team'], profit)
+        bot.send_message(message.chat.id, "Спасибо! Ваша заявка принята.")
+        del questions[message.from_user.id]
+    except ValueError:
+        bot.send_message(message.chat.id, "Введите корректное число для суммы профитов.")
+
+def save_application(user_id, team, profit):
+    cursor.execute('INSERT INTO users (user_id, username, team, profit, application_status) VALUES (?, ?, ?, ?, ?)',
+                   (user_id, 'test', team, profit, 'pending'))
+    conn.commit()
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
@@ -38,18 +73,6 @@ def callback_query(call):
                          "🤴Админ состав:\n"
                          "@Nutcraker❤️\n"
                          "@Dobruy_Na_Svyazi❤️")
-    elif call.data == "button4_pressed":
-        bot.answer_callback_query(call.id, "Soul")
-        bot.send_message(call.message.chat.id,
-                         "✅Отлично! Вы выбрали Soul! Пришлите от 3-х до 6-ти ссылок на категории в одном сообщении!")
-    elif call.data == "button5_pressed":
-        bot.answer_callback_query(call.id, "Void")
-        bot.send_message(call.message.chat.id,
-                         "✅Отлично! Вы выбрали Void! Пришлите от 3-х до 6-ти ссылок на категории в одном сообщении!")
-    elif call.data == "button6_pressed":
-        bot.answer_callback_query(call.id, "Любой")
-        bot.send_message(call.message.chat.id,
-                         "✅Отлично! Пришлите от 3-х до 6-ти ссылок на категории в одном сообщении!")
 
 @bot.message_handler(func=lambda message: len(re.findall(r'http[s]?://[^\s]+', message.text)) >= 3 and len(
     re.findall(r'http[s]?://[^\s]+', message.text)) <= 6)
